@@ -7,6 +7,19 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 type View = 'book' | 'calendar'
+
+/** The box the book or calendar has to fit inside, kept current on resize. */
+function useBox() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    if (!ref.current) return
+    const ro = new ResizeObserver(([e]) => setBox({ w: e.contentRect.width, h: e.contentRect.height }))
+    ro.observe(ref.current)
+    return () => ro.disconnect()
+  }, [])
+  return [ref, box] as const
+}
 type Props = { sketches: Sketch[]; year: number; month: number; arrived: number }
 
 /* A page in the book is one of these. Days that have not arrived yet are still
@@ -47,44 +60,49 @@ export function Sketchbook({ sketches, year, month, arrived: arrivedFromServer }
   const firstWeekday = new Date(year, month, 1).getDay()
   const weekdayOf = (d: number) => WEEKDAYS[(firstWeekday + d - 1) % 7]
 
+  const [stageRef, box] = useBox()
+  const phone = box.w > 0 && box.w < 640
+
   return (
-    <main className="wrap">
+    <main className="app">
       <header className="top">
         <a href="https://www.bhaumikmistry.com" className="name">Bhaumik Mistry</a>
-        <span className="muted">Inktober</span>
+        <div className="switch" role="tablist" aria-label="View">
+          {(['book', 'calendar'] as View[]).map((v) => (
+            <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
+              {v === 'book' ? 'Sketchbook' : 'Calendar'}
+            </button>
+          ))}
+        </div>
       </header>
 
       <section className="hero">
+        <span className="eyebrow">Inktober</span>
         <h1 className="year">{year}</h1>
-        <p className="lede">One ink drawing a day, through October.</p>
-        <Progress arrived={arrived} />
+        <div className="meta">
+          <p className="lede">One ink drawing a day, through October.</p>
+          <Progress arrived={arrived} />
+        </div>
       </section>
 
-      <div className="switch" role="tablist" aria-label="View">
-        {(['book', 'calendar'] as View[]).map((v) => (
-          <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
-            {v === 'book' ? 'Sketchbook' : 'Calendar'}
-          </button>
+      <div className="stage" ref={stageRef}>
+        {box.w > 0 && (view === 'book' ? (
+          phone
+            ? <PhoneBook sketches={sketches} arrived={arrived} year={year} month={month} weekdayOf={weekdayOf}
+                box={box} jump={jump} onJumped={() => setJump(null)} onOpen={setOpen} />
+            : <Book sketches={sketches} arrived={arrived} year={year} month={month} weekdayOf={weekdayOf}
+                box={box} jump={jump} onJumped={() => setJump(null)} onOpen={setOpen} />
+        ) : (
+          <Calendar sketches={sketches} arrived={arrived} year={year} month={month} firstWeekday={firstWeekday}
+            box={box} onOpen={setOpen} />
         ))}
       </div>
-
-      {view === 'book' ? (
-        <Book sketches={sketches} arrived={arrived} year={year} month={month} weekdayOf={weekdayOf}
-          jump={jump} onJumped={() => setJump(null)} onOpen={setOpen} />
-      ) : (
-        <Calendar sketches={sketches} arrived={arrived} year={year} month={month} firstWeekday={firstWeekday} onOpen={setOpen} />
-      )}
 
       {open !== null && (
         <Viewer day={open} live={live} month={month} weekdayOf={weekdayOf}
           onClose={() => setOpen(null)} onGo={setOpen}
           onBook={(d) => { setOpen(null); setView('book'); setJump(d) }} />
       )}
-
-      <footer className="foot">
-        <span>Ink on paper, scanned each evening.</span>
-        <a href="https://inktober.com" target="_blank" rel="noreferrer">What is Inktober</a>
-      </footer>
     </main>
   )
 }
@@ -102,16 +120,21 @@ function Progress({ arrived }: { arrived: number }) {
 
 /* ---------------------------------------------------------------- the book */
 
-function Book({ sketches, arrived, year, month, weekdayOf, jump, onJumped, onOpen }: {
+type BookProps = {
   sketches: Sketch[]; arrived: number; year: number; month: number; weekdayOf: (d: number) => string
-  jump: number | null; onJumped: () => void; onOpen: (d: number) => void
-}) {
+  box: { w: number; h: number }; jump: number | null; onJumped: () => void; onOpen: (d: number) => void
+}
+const BAR = 52   // room under the book for its controls
+
+function Book({ sketches, arrived, year, month, weekdayOf, box, jump, onJumped, onOpen }: BookProps) {
   const pages = useMemo<Page[]>(() => {
     const p: Page[] = [{ kind: 'cover' }, { kind: 'intro' }, ...sketches.map((s) => ({ kind: 'day' as const, sketch: s })), { kind: 'colophon' }]
     if (p.length % 2) p.push({ kind: 'blank' })
     p.push({ kind: 'blank' }, { kind: 'back' })
     return p
   }, [sketches])
+  // the largest two page spread that fits, pages kept at 3:4
+  const pageW = Math.floor(Math.min((box.w - 24) / 2, ((box.h - BAR) * 3) / 4))
   const leaves = pages.length / 2
   const [flipped, setFlipped] = useState(0)
   const [turning, setTurning] = useState<number | null>(null)
@@ -153,7 +176,7 @@ function Book({ sketches, arrived, year, month, weekdayOf, jump, onJumped, onOpe
 
   return (
     <section className="bookwrap">
-      <div className="book" style={{ transform: `translateX(${shift})` }}>
+      <div className="book" style={{ width: pageW * 2, height: (pageW * 4) / 3, transform: `translateX(${shift})` }}>
         {Array.from({ length: leaves }, (_, i) => {
           const isFlipped = i < flipped
           const z = turning === i ? 1000 : isFlipped ? i + 1 : leaves - i
@@ -171,7 +194,42 @@ function Book({ sketches, arrived, year, month, weekdayOf, jump, onJumped, onOpe
         <span>{flipped === 0 ? 'Cover' : flipped === leaves ? 'The end' : spread || ' '}</span>
         <button onClick={() => go(flipped + 1)} disabled={flipped === leaves} aria-label="Next page">&#8594;</button>
       </div>
-      <p className="hint">Click a page or use the arrow keys to turn.</p>
+    </section>
+  )
+}
+
+/* On a phone a spread would be postage stamps, so the book is one page at a
+ * time: each page turns away to the left, and a swipe turns it. */
+function PhoneBook({ sketches, arrived, year, month, weekdayOf, box, jump, onJumped, onOpen }: BookProps) {
+  const pages = useMemo<Page[]>(() => [{ kind: 'cover' }, { kind: 'intro' },
+    ...sketches.map((s) => ({ kind: 'day' as const, sketch: s })), { kind: 'colophon' }], [sketches])
+  const [at, setAt] = useState(0)
+  const go = useCallback((n: number) => setAt(Math.max(0, Math.min(pages.length - 1, n))), [pages.length])
+  useEffect(() => {
+    if (jump == null) return
+    go(pages.findIndex((p) => p.kind === 'day' && p.sketch.day === jump))
+    onJumped()
+  }, [jump, pages, go, onJumped])
+  const x0 = useRef(0)
+  const pageW = Math.floor(Math.min(box.w - 8, ((box.h - BAR) * 3) / 4))
+  const p = pages[at]
+  return (
+    <section className="bookwrap">
+      <div className="phonebook" style={{ width: pageW, height: (pageW * 4) / 3 }}
+        onTouchStart={(e) => { x0.current = e.touches[0].clientX }}
+        onTouchEnd={(e) => { const dx = e.changedTouches[0].clientX - x0.current; if (dx < -40) go(at + 1); if (dx > 40) go(at - 1) }}>
+        {pages.map((pg, i) => (
+          <div key={i} className={`pleaf${i < at ? ' gone' : ''}`} style={{ zIndex: pages.length - i }}
+            onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); go(e.clientX - r.left > r.width / 3 ? at + 1 : at - 1) }}>
+            {Math.abs(i - at) <= 2 && <PageView page={pg} side="right" {...{ arrived, year, month, weekdayOf, onOpen }} />}
+          </div>
+        ))}
+      </div>
+      <div className="bookbar">
+        <button onClick={() => go(at - 1)} disabled={at === 0} aria-label="Previous page">&#8592;</button>
+        <span>{p.kind === 'day' ? `October ${p.sketch.day}` : p.kind === 'cover' ? 'Cover' : ' '}</span>
+        <button onClick={() => go(at + 1)} disabled={at === pages.length - 1} aria-label="Next page">&#8594;</button>
+      </div>
     </section>
   )
 }
@@ -221,13 +279,19 @@ function PageView({ page, side, arrived, year, month, weekdayOf, onOpen }: {
 
 /* ---------------------------------------------------------------- the calendar */
 
-function Calendar({ sketches, arrived, year, month, firstWeekday, onOpen }: {
-  sketches: Sketch[]; arrived: number; year: number; month: number; firstWeekday: number; onOpen: (d: number) => void
+function Calendar({ sketches, arrived, year, month, firstWeekday, box, onOpen }: {
+  sketches: Sketch[]; arrived: number; year: number; month: number; firstWeekday: number
+  box: { w: number; h: number }; onOpen: (d: number) => void
 }) {
   const cells: (Sketch | null)[] = [...Array(firstWeekday).fill(null), ...sketches]
   while (cells.length % 7) cells.push(null)
+  const rows = cells.length / 7, gap = box.w < 640 ? 5 : 10
+  // fill the height, and never let a cell get wider than a drawing is tall
+  const cellH = (box.h - 34 - gap * (rows - 1)) / rows
+  const cellW = Math.min((box.w - gap * 6) / 7, cellH * 0.82)
+  const width = cellW * 7 + gap * 6
   return (
-    <section className="cal">
+    <section className="cal" style={{ width, ['--rows' as string]: rows, ['--gap' as string]: `${gap}px`, ['--cellh' as string]: `${cellH}px` }}>
       <div className="cal-head">{WEEKDAYS.map((w) => <span key={w}><b>{w.slice(0, 3)}</b><i>{w[0]}</i></span>)}</div>
       <div className="cal-grid">
         {cells.map((s, i) => {
@@ -244,7 +308,6 @@ function Calendar({ sketches, arrived, year, month, firstWeekday, onOpen }: {
           )
         })}
       </div>
-      <p className="hint">{MONTHS[month]} {year}. Weeks run Sunday to Saturday.</p>
     </section>
   )
 }
