@@ -11,25 +11,24 @@ button{font:inherit;color:inherit;cursor:pointer}
 .muted{color:var(--muted)}
 
 .app{height:100dvh;display:flex;flex-direction:column;max-width:1400px;margin:0 auto;padding:0 24px env(safe-area-inset-bottom)}
-.top{display:flex;justify-content:space-between;align-items:center;height:60px;flex:none;font-size:14px}
-.name{font-weight:600;letter-spacing:-.01em}
-.name:hover{opacity:.6}
-
-.hero{flex:none;display:flex;flex-direction:column;align-items:center;padding:clamp(4px,1.6vh,20px) 0 clamp(10px,2.4vh,28px)}
-.eyebrow{font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
-.year{font-size:clamp(52px,11vh,128px);line-height:.92;font-weight:600;letter-spacing:-.06em;margin:0}
-.meta{display:flex;align-items:center;gap:22px;margin-top:clamp(8px,1.4vh,16px);flex-wrap:wrap;justify-content:center}
-.lede{font-size:clamp(14px,1.9vh,18px);color:var(--muted);margin:0;letter-spacing:-.01em}
-.progress{display:inline-flex;align-items:center;gap:12px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.ticks{display:flex;gap:3px}
-.ticks i{width:5px;height:13px;border-radius:2px;background:var(--line);transition:background .3s}
+.top{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;padding:18px 0 14px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px}
+.year{font-size:40px;line-height:1;font-weight:600;letter-spacing:-.05em;margin:0}
+.by{font-size:12px;line-height:1.3;color:var(--muted);white-space:nowrap}
+.by a{color:var(--ink);font-weight:500}.by a:hover{opacity:.6}
+.meta{display:flex;align-items:center;gap:18px}
+.lede{font-size:14px;color:var(--muted);margin:0;letter-spacing:-.01em;white-space:nowrap}
+.progress{display:inline-flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ticks{display:flex;gap:2px}
+.ticks i{width:4px;height:12px;border-radius:2px;background:var(--line);transition:background .3s}
 .ticks i.done{background:var(--ink)}
+.top .switch{justify-self:end}
 
 .switch{display:flex;gap:2px;padding:3px;background:#f2f2f4;border-radius:999px}
 .switch button{border:0;background:none;padding:6px 16px;border-radius:999px;font-size:13px;color:var(--muted);transition:all .2s}
 .switch button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08),0 1px 1px rgba(0,0,0,.04)}
 
-.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding-bottom:12px}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:14px 0 10px}
 
 /* ---------------- the book: leaves turn around the spine in 3D ---------------- */
 .bookwrap{display:flex;flex-direction:column;align-items:center;gap:12px}
@@ -107,15 +106,13 @@ button:disabled{opacity:.3;cursor:default}
 .v-bar{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .v-bar .ghost{border-color:transparent;color:var(--muted)}
 
+@media (max-width:1000px){.lede{display:none}}
 @media (max-width:640px){
   .app{padding:0 14px env(safe-area-inset-bottom)}
-  .top{height:52px}
-  .name{font-size:13px}
+  .top{grid-template-columns:1fr auto;row-gap:10px;padding:12px 0 10px}
+  .year{font-size:32px}
+  .meta{grid-column:1/-1;grid-row:2;justify-content:center}
   .switch button{padding:6px 12px}
-  .eyebrow{font-size:10px}
-  .meta{gap:10px;flex-direction:column}
-  .lede{font-size:14px}
-  .ticks{gap:2px}.ticks i{width:4px;height:11px}
   .cal-head{margin-bottom:6px;height:18px;padding-left:2px}
   .cal-head b{display:none}.cal-head i{display:inline}
   .cell{border-radius:7px}.cell .d{top:3px;left:5px;font-size:10px}.cell .tag{display:none}
@@ -124,11 +121,10 @@ button:disabled{opacity:.3;cursor:default}
   .page{padding:8% 9%}
 }
 @media (max-height:540px){
-  .top{height:44px}
-  .hero{flex-direction:row;gap:14px;padding:0 0 8px}
-  .eyebrow{margin:0}.year{font-size:30px;letter-spacing:-.04em}
-  .meta{margin:0}.lede{display:none}
-  .stage{padding-bottom:6px}
+  .top{grid-template-columns:1fr auto 1fr;padding:8px 0 6px}
+  .meta{grid-column:auto;grid-row:auto}
+  .year{font-size:24px}.by{font-size:10px}
+  .stage{padding:6px 0 4px}
   .bookwrap{gap:6px}.bookbar button{padding:4px 12px}
   .cell .tag{display:none}.cal-head{margin-bottom:4px}
 }

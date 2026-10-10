@@ -66,7 +66,14 @@ export function Sketchbook({ sketches, year, month, arrived: arrivedFromServer }
   return (
     <main className="app">
       <header className="top">
-        <a href="https://www.bhaumikmistry.com" className="name">Bhaumik Mistry</a>
+        <div className="brand">
+          <h1 className="year">{year}</h1>
+          <span className="by">Inktober<br /><a href="https://www.bhaumikmistry.com">Bhaumik Mistry</a></span>
+        </div>
+        <div className="meta">
+          <p className="lede">One ink drawing a day, through October.</p>
+          <Progress arrived={arrived} />
+        </div>
         <div className="switch" role="tablist" aria-label="View">
           {(['book', 'calendar'] as View[]).map((v) => (
             <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
@@ -75,15 +82,6 @@ export function Sketchbook({ sketches, year, month, arrived: arrivedFromServer }
           ))}
         </div>
       </header>
-
-      <section className="hero">
-        <span className="eyebrow">Inktober</span>
-        <h1 className="year">{year}</h1>
-        <div className="meta">
-          <p className="lede">One ink drawing a day, through October.</p>
-          <Progress arrived={arrived} />
-        </div>
-      </section>
 
       <div className="stage" ref={stageRef}>
         {box.w > 0 && (view === 'book' ? (
